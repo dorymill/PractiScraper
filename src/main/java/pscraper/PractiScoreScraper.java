@@ -331,16 +331,18 @@ public class PractiScoreScraper implements Runnable {
 
     private void cleanAbort (String message) {
 
-        emitState(message);
-
         browser.close();
-
+        
         try {
             fwriter.close();
         } catch (IOException e) {}
 
-        emitState("KILL");
-
+        if(message.contains("COMPLETE") {
+            emitState(msg);
+        } else {
+            emitState(msg);
+            emit("KILL");
+        }
     }
 
     private void delay (float time) {
