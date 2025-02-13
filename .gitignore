@@ -1,0 +1,5 @@
+/PractiScoreScraper/target/
+/target/
+/*.csv
+/nbactions.xml
+/.vscode
