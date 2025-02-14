@@ -27,7 +27,6 @@ public class PractiScoreScraper implements Runnable {
     private String fileName = "";
 
     private int numStages    = 0;
-    private int MAX_HANDLERS = 5;
     private int stageNum     = 1;
     private int division     = 1;
 
