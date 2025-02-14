@@ -15,6 +15,11 @@ import com.microsoft.playwright.Playwright;
 /**
  *
  * @author Asmod
+ * 
+ * @brief This is the main scraping logic for PractiScore data.
+ * 
+ *  TO-DO: One Hot Encode the division, and save that off as
+ *         well for more robust ML models.
  */
 public class PractiScoreScraper implements Runnable {
 

@@ -193,6 +193,7 @@ public class ScraperGUI extends javax.swing.JFrame {
         statePanel.add(headlessMode, gridBagConstraints);
 
         divisonGroup.add(coButton);
+        coButton.setSelected(true);
         coButton.setText("CO");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
