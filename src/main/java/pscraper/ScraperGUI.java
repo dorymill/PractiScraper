@@ -10,6 +10,9 @@ import javax.swing.AbstractButton;
 import javax.swing.ButtonGroup;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -344,6 +347,10 @@ public class ScraperGUI extends javax.swing.JFrame {
             scraperThread.interrupt();
         } catch (Exception e) {}
 
+        try {
+            scraper.fwriter.close();
+        } catch (IOException ex) {}
+        
         scraperThread = null;
         scraper       = null;
 

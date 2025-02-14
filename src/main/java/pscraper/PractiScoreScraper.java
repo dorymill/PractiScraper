@@ -36,7 +36,7 @@ public class PractiScoreScraper implements Runnable {
     private boolean headless = true;
 
     private File logFile;
-    private FileWriter fwriter;
+    public  FileWriter fwriter;
 
     private String divisionStr;
     private String fullDivName;
