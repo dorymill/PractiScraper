@@ -100,13 +100,13 @@ public class PractiScoreScraper implements Runnable {
 
         page.locator("#divisionLevel").selectOption(Integer.toString(division));
 
-        delay(5);
+        delay(10);
 
         for(stageNum = 1; stageNum < numStages + 1; stageNum++) {
 
             page.locator("#resultLevel").selectOption(Integer.toString(stageNum));
 
-            delay(5);
+            delay(10);
             
             emitState("Searching for results table. . .");
             /* Wait up to 2 minutes to find the table. */
@@ -337,11 +337,11 @@ public class PractiScoreScraper implements Runnable {
             fwriter.close();
         } catch (IOException e) {}
 
-        if(message.contains("COMPLETE") {
-            emitState(msg);
+        if (message.contains("COMPLETE")) {
+            emitState(message);
         } else {
-            emitState(msg);
-            emit("KILL");
+            emitState(message);
+            emitState("KILL");
         }
     }
 
