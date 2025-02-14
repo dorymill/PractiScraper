@@ -34,6 +34,7 @@ public class PractiScoreScraper implements Runnable {
     private FileWriter fwriter;
 
     private String divisionStr;
+    private String fullDivName;
 
     private Browser browser;
 
@@ -45,6 +46,7 @@ public class PractiScoreScraper implements Runnable {
     private final int PTS_IDX    = 3;
     private final int HF_IDX     = 4;
     private final int TIME_IDX   = 5;
+    private final int DIV_IDX    = 6;
     private final int A_IDX      = 11;
     private final int B_IDX      = 12;
     private final int C_IDX      = 13;
@@ -136,6 +138,12 @@ public class PractiScoreScraper implements Runnable {
                 Locator cells = row.locator("td");
 
                 boolean valid = false;
+
+                /* Throw out shooters not in the selected division and overall results */
+                if (!cells.nth(DIV_IDX).textContent().contains(fullDivName) || division == 0) {
+                    shootersProcessed++;
+                    continue;
+                }
 
                 for (int cellIdx : metricsIndices) {
 
@@ -262,30 +270,37 @@ public class PractiScoreScraper implements Runnable {
 
             case ("CO"):
                 division = 1;
+                fullDivName = "Carry Optics";
                 break;
 
             case ("L"):
                 division = 2;
+                fullDivName = "Limited";
                 break;
 
             case ("LO"):
                 division = 3;
+                fullDivName = "Limited Optics";
                 break;
 
             case ("O"):
                 division = 4;
+                fullDivName = "Open";
                 break;
 
             case ("PCC"):
                 division = 5;
+                fullDivName = "PCC";
                 break;
 
             case ("P"):
                 division = 6;
+                fullDivName = "Production";
                 break;
 
             case ("SS"):
                 division = 7;
+                fullDivName = "Single Stack";
                 break;
 
             /* Overall */
