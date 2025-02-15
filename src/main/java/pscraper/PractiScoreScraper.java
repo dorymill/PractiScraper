@@ -12,6 +12,11 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 
+import Events.ProgressEvt;
+import Events.StateEvt;
+import Handlers.ProgressHandler;
+import Handlers.StateHandler;
+
 /**
  *
  * @author Asmod
@@ -26,11 +31,8 @@ public class PractiScoreScraper implements Runnable {
     private String url      = "";
     private String fileName = "";
 
-    private int numStages    = 0;
-    private int stageNum     = 1;
-    private int division     = 1;
 
-    private float shootersProcessed = 0;
+    private int division     = 1;
 
     private boolean headless = true;
 
@@ -62,14 +64,13 @@ public class PractiScoreScraper implements Runnable {
 
     private List<Integer> metricsIndices;
     private List<Double> metrics;
+    private List<Match> matches;
             
-    public PractiScoreScraper (String url, String division, int numStages, String fileName, boolean headless) {
+    public PractiScoreScraper (List<Match> matches, String division, boolean headless) {
         
-        this.url         = url;
-        this.fileName    = fileName;
-        this.numStages   = numStages;
         this.headless    = headless;
         this.divisionStr = division;
+        this.matches     = matches;
 
         progressHandlers = new ArrayList<>();
         stateHandlers    = new ArrayList<>();
@@ -83,117 +84,139 @@ public class PractiScoreScraper implements Runnable {
     @Override
     public void run () {
 
+        int totalMatches = matches.size();
+
         /* Do the PlayWright Magic */
         emitProgress(0);
 
-        createLogFile(fileName);
+        for(int matchCntr = 0; matchCntr < totalMatches; matchCntr++) {
 
-        emitState("Log file created.");
+            Match match = matches.get(matchCntr);
 
-        Playwright pWright = Playwright.create();
+            float shootersProcessed = 0;
 
-        emitState("Launching browser.");
+            int numStages = match.stageCount;
+            int stageNum;
 
-        browser = pWright.firefox().launch(new BrowserType.LaunchOptions().setHeadless(headless));
-
-        emitState("Loading page.");
-
-        Page page = browser.newPage();
-
-        page.setDefaultTimeout(120000);
-        
-        page.navigate(url);
-
-        page.locator("#divisionLevel").selectOption(Integer.toString(division));
-
-        delay(10);
-
-        for(stageNum = 1; stageNum < numStages + 1; stageNum++) {
-
-            page.locator("#resultLevel").selectOption(Integer.toString(stageNum));
-
+            createLogFile(match.fileName);
+    
+            emitState("Log file created.");
+    
+            Playwright pWright = Playwright.create();
+    
+            emitState("Launching browser.");
+    
+            browser = pWright.firefox().launch(new BrowserType.LaunchOptions().setHeadless(headless));
+    
+            emitState("Loading page.");
+    
+            Page page = browser.newPage();
+    
+            page.setDefaultTimeout(120000);
+            
+            page.navigate(match.url);
+    
+            page.locator("#divisionLevel").selectOption(Integer.toString(division));
+    
             delay(10);
-            
-            emitState("Searching for results table. . .");
-            /* Wait up to 2 minutes to find the table. */
-            try {
-                page.waitForSelector("#mainResultsTable", 
-                                        new Page.WaitForSelectorOptions().setTimeout(120000));
-            } catch (Exception e) {
-                cleanAbort("Timed out acquiring data.");
-            }
-
-            Locator table = page.locator("#mainResultsTable");
-
-            Locator rows = table.locator("tr");
-
-            int rowCount   = rows.count();
-
-            
-            for(int idx = 0; idx < rowCount-1; idx++) {
-
-                emitState(String.format("Capturing shooter %d/%d in Stage %d", idx+1, rowCount-1, stageNum));
-
-                metrics.clear();
-
-                /* The first row has nothing in it. */
-                Locator row = rows.nth(idx+1);
-
-                Locator cells = row.locator("td");
-
+    
+            for(stageNum = 1; stageNum < numStages + 1; stageNum++) {
+    
+                page.locator("#resultLevel").selectOption(Integer.toString(stageNum));
+    
+                delay(10);
+                
+                emitState("Searching for results table. . .");
+                /* Wait up to 2 minutes to find the table. */
+                try {
+                    page.waitForSelector("#mainResultsTable", 
+                                            new Page.WaitForSelectorOptions().setTimeout(120000));
+                } catch (Exception e) {
+                    cleanAbort("Timed out acquiring data.");
+                }
+    
+                Locator table = page.locator("#mainResultsTable");
+    
+                Locator rows = table.locator("tr");
+    
+                int rowCount   = rows.count();
+    
+                float rowCountf;
+                float numStagesf;
+    
                 boolean valid = false;
-
-                /* Throw out shooters not in the selected division and overall results */
-                if (!cells.nth(DIV_IDX).textContent().contains(fullDivName) || division == 0) {
+                
+                for(int idx = 0; idx < rowCount-1; idx++) {
+    
+                    emitState(String.format("Capturing shooter %d/%d in Stage %d (Match %d/%d)", idx+1, rowCount-1, stageNum, matchCntr+1, totalMatches));
+    
+                    metrics.clear();
+    
+                    /* The first row has nothing in it. */
+                    Locator row = rows.nth(idx+1);
+    
+                    Locator cells = row.locator("td");
+    
+                    valid = false;
+    
+                    /* Throw out shooters not in the selected division and overall results */
+                    if (!cells.nth(DIV_IDX).textContent().contains(fullDivName) || division == 0) {
+                        shootersProcessed++;
+                        continue;
+                    }
+    
+                    for (int cellIdx : metricsIndices) {
+    
+                        String cellText = cells.nth(cellIdx).textContent();
+    
+                        valid = false;
+                        
+                        /* Null row protection */
+                        if(!isNumeric(cellText)){
+                            break;
+                        }
+    
+                        /* 0 HF Rejection */
+                        if(cellIdx == PSBL_IDX && Double.parseDouble(cellText) <= 0) {
+                            break;
+                        }
+    
+                        /* Chrono Station Rejection */
+                        if(cellIdx == STGPTS_IDX && Double.parseDouble(cellText) <= 0 ) {
+                            break;
+                        }
+    
+                        /* Unfortunately we must throw out time limited stages since PS doesn't record their time */
+                        if(cellIdx == TIME_IDX && Double.parseDouble(cellText) <= 0 ) {
+                            break;
+                        }
+    
+                        metrics.add(Double.valueOf(cellText));
+    
+                        valid = true;
+    
+                    }
+    
+                    /* Write the data and update the progress bar */
+                    if(valid) {
+                        writeMetricData(metrics);
+                    }
+    
                     shootersProcessed++;
-                    continue;
+    
+                    rowCountf  = (float) rowCount;
+                    numStagesf = (float) numStages;
+    
+                    emitProgress(Math.round((shootersProcessed/(numStagesf*rowCountf))*100));
                 }
-
-                for (int cellIdx : metricsIndices) {
-
-                    String cellText = cells.nth(cellIdx).textContent();
-                    
-                    /* Null row protection */
-                    if(!isNumeric(cellText)){
-                        break;
-                    }
-
-                    /* 0 HF Rejection */
-                    if(cellIdx == PSBL_IDX && Double.parseDouble(cellText) <= 0) {
-                        break;
-                    }
-
-                    /* Chrono Station Rejection */
-                    if(cellIdx == TIME_IDX && Double.parseDouble(cellText) <= 0 ) {
-                        break;
-                    }
-
-                    if(cellIdx == STGPTS_IDX && Double.parseDouble(cellText) <= 0 ) {
-                        break;
-                    }
-
-                    metrics.add(Double.valueOf(cellText));
-
-                    valid = true;
-
-                }
-
-                /* Write the data and update the progress bar */
-                if(valid) {
-                    writeMetricData(metrics);
-                }
-
-                shootersProcessed++;
-
-                float rowCountf  = (float) rowCount;
-                float numStagesf = (float) numStages;
-
-                emitProgress(Math.round((shootersProcessed/(numStagesf*rowCountf))*100));
             }
+
+            browser.close();
+            closeLogFile();
+            emitProgress(100);
         }
 
         /* We're done! */
-        emitProgress(100);
         cleanAbort("COMPLETE");
 
     }
@@ -256,6 +279,13 @@ public class PractiScoreScraper implements Runnable {
             } catch (IOException e) {
                 cleanAbort("Failed to write entry to file.");
             }
+        }
+    }
+
+    private void closeLogFile () {
+        try {
+            fwriter.close();
+        } catch (Exception e) {
         }
     }
 

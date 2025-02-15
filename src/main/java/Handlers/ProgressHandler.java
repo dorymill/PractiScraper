@@ -1,4 +1,6 @@
-package pscraper;
+package Handlers;
+
+import Events.ProgressEvt;
 
 public interface ProgressHandler {
 

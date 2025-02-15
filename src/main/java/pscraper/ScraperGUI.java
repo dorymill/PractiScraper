@@ -4,15 +4,27 @@
  */
 package pscraper;
 
+import Handlers.ProgressHandler;
+import Handlers.StateHandler;
+import Events.StateEvt;
+import Events.ProgressEvt;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 
 import javax.swing.AbstractButton;
 import javax.swing.ButtonGroup;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
+
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileSystemView;
 
 /**
  *
@@ -26,6 +38,12 @@ public class ScraperGUI extends javax.swing.JFrame {
 
     private PractiScoreScraper scraper = null;
 
+    private List<Match> matches;
+
+    private final int FNAME_IDX  = 0;
+    private final int URL_IDX    = 1;
+    private final int STGCNT_IDX = 2; 
+
     /**
      * Creates new form ScraperGUI
      */
@@ -35,6 +53,8 @@ public class ScraperGUI extends javax.swing.JFrame {
         progressBar.setMaximum(100);
         progressBar.setMinimum(0);
         progressBar.setStringPainted(true);
+
+        matches = new ArrayList<>();
     }
 
     /* State and Progress Event Handlers */
@@ -81,9 +101,7 @@ public class ScraperGUI extends javax.swing.JFrame {
 
         divisonGroup = new javax.swing.ButtonGroup();
         mainPanel = new javax.swing.JPanel();
-        urlField = new javax.swing.JTextField();
-        stageCountTextBox = new javax.swing.JTextField();
-        fileTextBox = new javax.swing.JTextField();
+        inputField = new javax.swing.JTextField();
         progressBar = new javax.swing.JProgressBar();
         scrapeButton = new javax.swing.JButton();
         statePanel = new javax.swing.JPanel();
@@ -100,17 +118,25 @@ public class ScraperGUI extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("PractiScore Scraper");
-        setMaximumSize(new java.awt.Dimension(550, 325));
-        setMinimumSize(new java.awt.Dimension(550, 325));
-        setPreferredSize(new java.awt.Dimension(550, 325));
+        setMaximumSize(new java.awt.Dimension(500, 250));
+        setMinimumSize(new java.awt.Dimension(500, 250));
+        setPreferredSize(new java.awt.Dimension(500, 250));
         setResizable(false);
         getContentPane().setLayout(new java.awt.GridBagLayout());
 
         mainPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Match Info"));
+        mainPanel.setMaximumSize(new java.awt.Dimension(300, 100));
+        mainPanel.setMinimumSize(new java.awt.Dimension(300, 100));
+        mainPanel.setPreferredSize(new java.awt.Dimension(300, 100));
         mainPanel.setLayout(new java.awt.GridBagLayout());
 
-        urlField.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        urlField.setText("PractiScore URL");
+        inputField.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        inputField.setText("Input Stage File");
+        inputField.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                inputFieldMouseClicked(evt);
+            }
+        });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 0;
@@ -119,31 +145,7 @@ public class ScraperGUI extends javax.swing.JFrame {
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.weightx = 1.0;
         gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
-        mainPanel.add(urlField, gridBagConstraints);
-
-        stageCountTextBox.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        stageCountTextBox.setText("Number of Stages");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.gridwidth = 3;
-        gridBagConstraints.gridheight = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.weightx = 1.0;
-        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
-        mainPanel.add(stageCountTextBox, gridBagConstraints);
-
-        fileTextBox.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        fileTextBox.setText("Output Filename");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 4;
-        gridBagConstraints.gridwidth = 3;
-        gridBagConstraints.gridheight = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.weightx = 1.0;
-        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
-        mainPanel.add(fileTextBox, gridBagConstraints);
+        mainPanel.add(inputField, gridBagConstraints);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 6;
@@ -274,71 +276,86 @@ public class ScraperGUI extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void scrapeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_scrapeButtonActionPerformed
-        
-        if(!running) {
+        try {
             
-            String url      = urlField.getText();
-            int numStages   = -1;
-            String fileName = fileTextBox.getText();
-            boolean headless = headlessMode.isSelected();
-
-            String division = getSelectedButtonText(divisonGroup);
+            if(!running) {
+                
+                String file = inputField.getText();
     
-            /* Validate Input */
-            if (!url.contains("https://practiscore.com/results/")) {
-                stateText.setText("Invalid URL Passed.");
-                return;
-            }
-    
-            if (isNumeric(stageCountTextBox.getText())) {
-                numStages = Integer.parseInt(stageCountTextBox.getText());
+                BufferedReader reader = new BufferedReader(new FileReader(file));
 
-                if(numStages < 0 || numStages > 50) {
-                    stateText.setText("Invalid stage count passed.");
-                    return;
+                String [] lineData;
+                
+                String line = reader.readLine();
+                
+                while(line != null) {
+
+                    lineData = line.split(",");
+
+                    /* Validate Input */
+                    if (!lineData[URL_IDX].contains("https://practiscore.com/results/")) {
+                        stateText.setText("Invalid URL Passed. Check URLs.");
+                        return;
+                    }
+
+                    if (Integer.parseInt(lineData[STGCNT_IDX]) <= 0 ) {
+                        stateText.setText("Invalid stage count passed. Check stage counts.");
+                        return;
+                    }
+
+                    Match match = new Match(lineData[FNAME_IDX],lineData[URL_IDX], Integer.parseInt(lineData[STGCNT_IDX]));
+
+                    matches.add(match);
+                    
+                    line = reader.readLine();
+
                 }
+                
+                reader.close();
+    
+                boolean headless = headlessMode.isSelected();
+    
+                String division = getSelectedButtonText(divisonGroup);
+        
+                /* File handling will occur in scraper constructor */
+    
+                /* Create the thread, add the listeners, and launch */
+                scraper = new PractiScoreScraper(matches, division, headless);
+    
+                scraper.addProgressHandler(progHandler);
+                scraper.addStateHandler(stateHandler);
+    
+                scraperThread = new Thread(scraper);
+                
+                scraperThread.start();
+    
+                scrapeButton.setText("Stop");
+                running = true;
+    
             } else {
-                stateText.setText("Invalid stage count passed.");
-                return;
+    
+                killScraper();
+                stateText.setText("Idle");
+                scrapeButton.setText("Scrape!");
+    
             }
 
-            /* File handling will occur in scraper constructor */
-
-            /* Create the thread, add the listeners, and launch */
-            scraper = new PractiScoreScraper(url, division, numStages, fileName, headless);
-
-            scraper.addProgressHandler(progHandler);
-            scraper.addStateHandler(stateHandler);
-
-            scraperThread = new Thread(scraper);
-            
-            scraperThread.start();
-
-            scrapeButton.setText("Stop");
-            running = true;
-
-        } else {
-
-            killScraper();
-            stateText.setText("Idle");
-            scrapeButton.setText("Scrape!");
-
+        } catch (Exception e) {
+            stateText.setText("Invalid input file.");
         }
 
     }//GEN-LAST:event_scrapeButtonActionPerformed
 
-    private boolean isNumeric(String strNum) {
-        
-        if (strNum == null) {
-            return false;
+    private void inputFieldMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_inputFieldMouseClicked
+
+        JFileChooser j = new JFileChooser("./");
+
+        int r = j.showSaveDialog(null);
+
+        if (r == JFileChooser.APPROVE_OPTION) {
+            inputField.setText(j.getSelectedFile().getAbsolutePath());
         }
-        try {
-            double d = Double.parseDouble(strNum);
-        } catch (NumberFormatException nfe) {
-            return false;
-        }
-        return true;
-    }
+    }//GEN-LAST:event_inputFieldMouseClicked
 
     private void killScraper () {
 
@@ -396,8 +413,8 @@ public class ScraperGUI extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButton coButton;
     private javax.swing.ButtonGroup divisonGroup;
-    private javax.swing.JTextField fileTextBox;
     private javax.swing.JRadioButton headlessMode;
+    private javax.swing.JTextField inputField;
     private javax.swing.JRadioButton lButton;
     private javax.swing.JRadioButton loButton;
     private javax.swing.JPanel mainPanel;
@@ -407,10 +424,8 @@ public class ScraperGUI extends javax.swing.JFrame {
     private javax.swing.JProgressBar progressBar;
     private javax.swing.JButton scrapeButton;
     private javax.swing.JRadioButton ssButton;
-    private javax.swing.JTextField stageCountTextBox;
     private javax.swing.JLabel stateLabel;
     private javax.swing.JPanel statePanel;
     private javax.swing.JLabel stateText;
-    private javax.swing.JTextField urlField;
     // End of variables declaration//GEN-END:variables
 }

@@ -1,4 +1,4 @@
-package pscraper;
+package Events;
 
 public class ProgressEvt {
 
