@@ -163,6 +163,15 @@ public class PractiScoreScraper implements Runnable {
                         break;
                     }
 
+                    /* Chrono Station Rejection */
+                    if(cellIdx == TIME_IDX && Double.parseDouble(cellText) <= 0 ) {
+                        break;
+                    }
+
+                    if(cellIdx == STGPTS_IDX && Double.parseDouble(cellText) <= 0 ) {
+                        break;
+                    }
+
                     metrics.add(Double.valueOf(cellText));
 
                     valid = true;
