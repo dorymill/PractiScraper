@@ -120,7 +120,7 @@ public class PractiScoreScraper implements Runnable {
     
             delay(10);
     
-            for(stageNum = 1; stageNum < numStages + 1; stageNum++) {
+            for(stageNum = 1; stageNum < numStages; stageNum++) {
     
                 page.locator("#resultLevel").selectOption(Integer.toString(stageNum));
     
@@ -205,7 +205,7 @@ public class PractiScoreScraper implements Runnable {
                     shootersProcessed++;
     
                     rowCountf  = (float) rowCount;
-                    numStagesf = (float) numStages;
+                    numStagesf = (float) numStages - 1;
     
                     emitProgress(Math.round((shootersProcessed/(numStagesf*rowCountf))*100));
                 }
