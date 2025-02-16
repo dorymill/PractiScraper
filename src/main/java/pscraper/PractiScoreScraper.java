@@ -48,7 +48,6 @@ public class PractiScoreScraper implements Runnable {
     private List<StateHandler>    stateHandlers;
 
     private final int PSBL_IDX   = 1;
-    private final int STGPTS_IDX = 2;
     private final int PTS_IDX    = 3;
     private final int HF_IDX     = 4;
     private final int TIME_IDX   = 5;
@@ -58,13 +57,13 @@ public class PractiScoreScraper implements Runnable {
     private final int C_IDX      = 13;
     private final int D_IDX      = 14;
     private final int M_IDX      = 15;
-    private final int NPM_IDX    = 17;
-    private final int NS_IDX     = 18;
-    private final int PROC_IDX   = 19;
+    private final int NPM_IDX    = 16;
+    private final int NS_IDX     = 17;
+    private final int PROC_IDX   = 18;
 
     private List<Integer> metricsIndices;
     private List<Double> metrics;
-    private List<Match> matches;
+    private List<Match>  matches;
             
     public PractiScoreScraper (List<Match> matches, String division, boolean headless) {
         
@@ -95,28 +94,29 @@ public class PractiScoreScraper implements Runnable {
 
             float shootersProcessed = 0;
 
-            int numStages = match.stageCount;
             int stageNum;
-
+            
             createLogFile(match.fileName);
-    
+            
             emitState("Log file created.");
-    
+            
             Playwright pWright = Playwright.create();
-    
+            
             emitState("Launching browser.");
-    
+            
             browser = pWright.firefox().launch(new BrowserType.LaunchOptions().setHeadless(headless));
-    
+            
             emitState("Loading page.");
-    
+            
             Page page = browser.newPage();
-    
+            
             page.setDefaultTimeout(120000);
             
             page.navigate(match.url);
-    
+            
             page.locator("#divisionLevel").selectOption(Integer.toString(division));
+        
+            int numStages = page.locator("#resultLevel").locator("option").count();
     
             delay(10);
     
@@ -144,11 +144,11 @@ public class PractiScoreScraper implements Runnable {
                 float rowCountf;
                 float numStagesf;
     
-                boolean valid = false;
+                boolean valid;
                 
                 for(int idx = 0; idx < rowCount-1; idx++) {
     
-                    emitState(String.format("Capturing shooter %d/%d in Stage %d (Match %d/%d)", idx+1, rowCount-1, stageNum, matchCntr+1, totalMatches));
+                    emitState(String.format("Capturing shooter %d/%d in Stage %d/%d (Match %d/%d)", idx+1, rowCount-1, stageNum, numStages-1, matchCntr+1, totalMatches));
     
                     metrics.clear();
     
@@ -182,7 +182,7 @@ public class PractiScoreScraper implements Runnable {
                         }
     
                         /* Chrono Station Rejection */
-                        if(cellIdx == STGPTS_IDX && Double.parseDouble(cellText) <= 0 ) {
+                        if(cellIdx == PTS_IDX && Double.parseDouble(cellText) <= 0 ) {
                             break;
                         }
     
@@ -220,7 +220,6 @@ public class PractiScoreScraper implements Runnable {
         cleanAbort("COMPLETE");
 
     }
-
 
     public void addStateHandler (StateHandler stateHandler) {
         stateHandlers.add(stateHandler);
@@ -266,7 +265,7 @@ public class PractiScoreScraper implements Runnable {
             try {
                 fwriter = new FileWriter(logFile);
 
-                fwriter.write("%psbl,StagePoints,HF,Time,A,B,C,D,M,NPM,NS,Proc\n");
+                fwriter.write("%psbl,Points,HF,Time,A,B,C,D,M,NPM,NS,Proc\n");
 
             } catch (Exception e) {
                 cleanAbort("Unable to create log file.");
@@ -293,7 +292,6 @@ public class PractiScoreScraper implements Runnable {
         metricsIndices = new ArrayList<>();
 
         metricsIndices.add(PSBL_IDX);
-        metricsIndices.add(STGPTS_IDX);
         metricsIndices.add(PTS_IDX);
         metricsIndices.add(HF_IDX);
         metricsIndices.add(TIME_IDX);

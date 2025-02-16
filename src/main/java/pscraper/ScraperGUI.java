@@ -42,7 +42,6 @@ public class ScraperGUI extends javax.swing.JFrame {
 
     private final int FNAME_IDX  = 0;
     private final int URL_IDX    = 1;
-    private final int STGCNT_IDX = 2; 
 
     /**
      * Creates new form ScraperGUI
@@ -298,12 +297,7 @@ public class ScraperGUI extends javax.swing.JFrame {
                         return;
                     }
 
-                    if (Integer.parseInt(lineData[STGCNT_IDX]) <= 0 ) {
-                        stateText.setText("Invalid stage count passed. Check stage counts.");
-                        return;
-                    }
-
-                    Match match = new Match(lineData[FNAME_IDX],lineData[URL_IDX], Integer.parseInt(lineData[STGCNT_IDX]));
+                    Match match = new Match(lineData[FNAME_IDX],lineData[URL_IDX]);
 
                     matches.add(match);
                     
