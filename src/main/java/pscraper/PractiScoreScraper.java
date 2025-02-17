@@ -48,6 +48,7 @@ public class PractiScoreScraper implements Runnable {
     private List<StateHandler>    stateHandlers;
 
     private final int PSBL_IDX   = 1;
+    private final int MAXPTS_IDX = 2;
     private final int PTS_IDX    = 3;
     private final int HF_IDX     = 4;
     private final int TIME_IDX   = 5;
@@ -96,10 +97,12 @@ public class PractiScoreScraper implements Runnable {
 
             int stageNum;
             
+            /* Create the log file */
             createLogFile(match.fileName);
             
             emitState("Log file created.");
             
+            /* Launch the browser and load the match page */
             Playwright pWright = Playwright.create();
             
             emitState("Launching browser.");
@@ -114,18 +117,19 @@ public class PractiScoreScraper implements Runnable {
             
             page.navigate(match.url);
             
+            /* Select the appropriate division */
             page.locator("#divisionLevel").selectOption(Integer.toString(division));
         
+            /* Get number of stages */
             int numStages = page.locator("#resultLevel").locator("option").count();
     
-            delay(10);
-    
+            /* Loop over stages collecting data. Stage 0 contains match results (irrelevant) */
             for(stageNum = 1; stageNum < numStages; stageNum++) {
     
+                /* Select the nth stage */
                 page.locator("#resultLevel").selectOption(Integer.toString(stageNum));
-    
-                delay(10);
                 
+                /* Wait for the results table to load, and grab the row count, rows, and max score for the stage */
                 emitState("Searching for results table. . .");
                 /* Wait up to 2 minutes to find the table. */
                 try {
@@ -139,6 +143,9 @@ public class PractiScoreScraper implements Runnable {
     
                 Locator rows = table.locator("tr");
     
+                /* The max score is contained in the Stage Points field for the top scorer */
+                double maxPoints = Double.parseDouble(rows.nth(1).locator("td").nth(MAXPTS_IDX).textContent());
+
                 int rowCount   = rows.count();
     
                 float rowCountf;
@@ -146,6 +153,7 @@ public class PractiScoreScraper implements Runnable {
     
                 boolean valid;
                 
+                /* Scrape the row data and write it to file */
                 for(int idx = 0; idx < rowCount-1; idx++) {
     
                     emitState(String.format("Capturing shooter %d/%d in Stage %d/%d (Match %d/%d)", idx+1, rowCount-1, stageNum, numStages-1, matchCntr+1, totalMatches));
@@ -191,7 +199,12 @@ public class PractiScoreScraper implements Runnable {
                             break;
                         }
     
-                        metrics.add(Double.valueOf(cellText));
+                        /* Max points is constant for every shooter, the other metrics are not. */
+                        if (cellIdx == MAXPTS_IDX) {
+                            metrics.add(maxPoints);
+                        } else {
+                            metrics.add(Double.valueOf(cellText));
+                        }
     
                         valid = true;
     
@@ -265,7 +278,7 @@ public class PractiScoreScraper implements Runnable {
             try {
                 fwriter = new FileWriter(logFile);
 
-                fwriter.write("%psbl,Points,HF,Time,A,B,C,D,M,NPM,NS,Proc\n");
+                fwriter.write("%psbl,MaxPoints,Points,HF,Time,A,B,C,D,M,NPM,NS,Proc\n");
 
             } catch (Exception e) {
                 cleanAbort("Unable to create log file.");
@@ -292,6 +305,7 @@ public class PractiScoreScraper implements Runnable {
         metricsIndices = new ArrayList<>();
 
         metricsIndices.add(PSBL_IDX);
+        metricsIndices.add(MAXPTS_IDX);
         metricsIndices.add(PTS_IDX);
         metricsIndices.add(HF_IDX);
         metricsIndices.add(TIME_IDX);
