@@ -119,6 +119,8 @@ public class PractiScoreScraper implements Runnable {
             
             /* Select the appropriate division */
             page.locator("#divisionLevel").selectOption(Integer.toString(division));
+
+            delay(5);
         
             /* Get number of stages */
             int numStages = page.locator("#resultLevel").locator("option").count();
@@ -128,6 +130,8 @@ public class PractiScoreScraper implements Runnable {
     
                 /* Select the nth stage */
                 page.locator("#resultLevel").selectOption(Integer.toString(stageNum));
+
+                delay(5);
                 
                 /* Wait for the results table to load, and grab the row count, rows, and max score for the stage */
                 emitState("Searching for results table. . .");
