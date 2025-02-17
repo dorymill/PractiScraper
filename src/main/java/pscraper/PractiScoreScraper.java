@@ -34,7 +34,7 @@ public class PractiScoreScraper implements Runnable {
 
     private int division     = 1;
 
-    private boolean headless = true;
+    public boolean headless = true;
 
     private File logFile;
     public  FileWriter fwriter;
@@ -240,6 +240,10 @@ public class PractiScoreScraper implements Runnable {
 
     public void addProgressHandler (ProgressHandler progressHandler) {
         progressHandlers.add(progressHandler);
+    }
+
+    public void setHeadlessState(boolean state) {
+        this.headless = state;
     }
 
     private void emitProgress (int progress) {

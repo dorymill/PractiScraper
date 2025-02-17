@@ -188,6 +188,11 @@ public class ScraperGUI extends javax.swing.JFrame {
         statePanel.add(stateText, gridBagConstraints);
 
         headlessMode.setText("Headless Mode");
+        headlessMode.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                headlessModeMouseClicked(evt);
+            }
+        });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 1;
@@ -350,6 +355,12 @@ public class ScraperGUI extends javax.swing.JFrame {
             inputField.setText(j.getSelectedFile().getAbsolutePath());
         }
     }//GEN-LAST:event_inputFieldMouseClicked
+
+    private void headlessModeMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_headlessModeMouseClicked
+        if(running) {
+            scraper.headless = headlessMode.isSelected();
+        }
+    }//GEN-LAST:event_headlessModeMouseClicked
 
     private void killScraper () {
 
